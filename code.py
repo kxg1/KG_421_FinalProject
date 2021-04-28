@@ -1,26 +1,21 @@
-# SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
-# SPDX-License-Identifier: MIT
+# Keeler Gonzales, Rice University, Department of Bioengineering
+# BIOE 421 Microcontroller Applications
+# Bluetooth-car alarm device
 
-"""This example uses the slide switch to control the little red LED."""
+# import necessary libraries for time delays and circuit playground functions
 import time
-# import neopixel libraries conflicted with the cp library
-# import board
-# import digitalio
-# import busio
 from adafruit_circuitplayground import cp
 
-# This code is written to be readable versus being Pylint compliant.
-# pylint: disable=simplifiable-if-statement
-
+# Import libraries necessary for control of iPhone
 from adafruit_hid.consumer_control import ConsumerControl
 from adafruit_hid.consumer_control_code import ConsumerControlCode
-
+# Import libraries for bluetooth connection
 import adafruit_ble
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
 from adafruit_ble.services.standard.hid import HIDService
 from adafruit_ble.services.standard.device_info import DeviceInfoService
 ble = adafruit_ble.BLERadio()
-ble.name = "Bluefruit-Volume-Control"
+ble.name = "Bluefruit-Car-Alarm"
 # Using default HID Descriptor.
 hid = HIDService()
 device_info = DeviceInfoService(
@@ -39,81 +34,105 @@ ALARM_COLOR = (128, 0, 0)
 MOVE_THRESHOLD = 50
 
 # set neopixels to state before bluetooth is connected
-# ring = neopixel.NeoPixel(board.NEOPIXEL, 10, brightness=0.05, auto_write=False)
-# ring.fill(DISCONNECTED_COLOR)
-# ring.show()
 cp.pixels.brightness = 0.05
 cp.pixels.fill(DISCONNECTED_COLOR)
 
-muted = False
-command = None
 # Disconnect if already connected, so that we pair properly.
 if ble.connected:
     for connection in ble.connections:
         connection.disconnect()
-
-
-def draw():
-    if not muted:
-        # ring.fill(FILL_COLOR)
-        cp.pixels.fill(FILL_COLOR)
-        # ring[dot_location] = UNMUTED_COLOR
-    else:
-        cp.pixels.fill(MUTED_COLOR)
-    # ring.show()
-
-
 advertising = False
 connection_made = False
-print("let's go!")
-
+# loop to run continuously
 while True:
-    ON = cp.switch
-    if ON:
-        cp.red_led = True
-        if not ble.connected:
-            cp.pixels.fill(DISCONNECTED_COLOR)
-            # ring.show()
-            connection_made = False
-            if not advertising:
-                ble.start_advertising(advertisement)
-                advertising = True
-            continue
-        else:
-            if connection_made:
-                pass
+    MOVE_THRESHOLD = 50
+    delay_time = 10
+    while True:
+        ON = cp.switch
+        # the slide switch operates the device on/off
+        if ON:
+            print("Armed and Ready")
+            cp.red_led = True
+            # when turned on, the device initially
+            # detects whether bluetooth is connected
+            if not ble.connected:
+                cp.pixels.fill(DISCONNECTED_COLOR)
+                # A specific ring color is shown when device is disconnected
+                connection_made = False
+                if not advertising:
+                    ble.start_advertising(advertisement)
+                    advertising = True
+                continue
             else:
+                if connection_made:
+                    pass
+                else:
+                    cp.pixels.fill(FILL_COLOR)
+                    connection_made = True
+                    # when a connection
+                    # is made, device lights up blue and advertising halts
+            advertising = False
+            if not advertising:
                 cp.pixels.fill(FILL_COLOR)
-                # ring.show()
-                connection_made = True
-        advertising = False
-        x, y, z = cp.acceleration
-        print((x, y, z))
-        L_stored = ((x**2)+(y**2)+(z**2))**0.5
-        print("Stored Magnitude")
-        print((L_stored))
-        time.sleep(0.3)
-        x_new, y_new, z_new = cp.acceleration
-        print((x_new, y_new, z_new))
-        L_new = ((x_new**2)+(y_new**2)+(z_new**2))**0.5
-        print("New Magnitude")
-        print((L_new))
-        if abs(10*L_new - 10*L_stored) > MOVE_THRESHOLD:
-            cp.pixels.fill(ALARM_COLOR)
-            # ring.show()
-            cc.send(ConsumerControlCode.PLAY_PAUSE)
-            for i in range(1,20):
-                cc.send(ConsumerControlCode.VOLUME_INCREMENT)
-            time.sleep(0.5)
-            ON = False
-    else:
-        cp.red_led = False
-        cp.pixels.fill((0, 0, 0))
-        cc.send(ConsumerControlCode.VOLUME_DECREMENT)
-        Calibrate = cp.button_a
-        time.sleep(0.1)
-        print(Calibrate)
-        if Calibrate:
-            cc.send(ConsumerControlCode.PLAY_PAUSE)
-            Calibrate = False;
+            # This section takes in the boards acceleration data, and calculates
+            # the magnitude of 2 vectors .3 seconds apart from each other
+            # If the difference between these two vectors is greater than a
+            # specified move threshold, then the alarm is triggered
+            x, y, z = cp.acceleration
+            print((x, y, z))
+            L_stored = ((x**2)+(y**2)+(z**2))**0.5
+            print("Stored Magnitude")
+            print((L_stored))
+            time.sleep(0.3)
+            x_new, y_new, z_new = cp.acceleration
+            print((x_new, y_new, z_new))
+            L_new = ((x_new**2)+(y_new**2)+(z_new**2))**0.5
+            print("New Magnitude")
+            print((L_new))
+            # The alarm works by playing a set alarm on the connected burner phone,
+            # and turning the volume all the way up
+            if abs(10*L_new - 10*L_stored) > MOVE_THRESHOLD:
+                cp.pixels.fill(ALARM_COLOR)
+                cc.send(ConsumerControlCode.PLAY_PAUSE)
+                for i in range(1, 20):
+                    cc.send(ConsumerControlCode.VOLUME_INCREMENT)
+                MOVE_THRESHOLD += 500
+                time.sleep(delay_time)
+                break
+                # after an alarm goes off, the threshold increases
+                # by a lot so it isnt triggered again and
+                # accidentally pauses the alarm
+                # the delay can be adjusted based on
+                # how far away someone is from their car
+
+        else:
+            cp.red_led = False
+            cp.pixels.fill((0, 0, 0))
+            cc.send(ConsumerControlCode.VOLUME_DECREMENT)
+            Calibrate = cp.button_a
+            time.sleep(0.3)
+            # volume is continuously decreased when not armed
+            print(Calibrate)
+            # status of alarm can be manually turned on and off,
+            # because it might end up in the wrong state after a trigger
+            if Calibrate:
+                cc.send(ConsumerControlCode.PLAY_PAUSE)
+                time.sleep(0.1)
+                Calibrate = False
+            time.sleep(0.3)
+            # buttons used to toggle sensitivty and delay of alarm
+            if cp.button_b:
+                MOVE_THRESHOLD += 1
+            if cp.touch_A1:
+                MOVE_THRESHOLD -= 1
+            print("movement threshold", MOVE_THRESHOLD)
+            if cp.touch_A2:
+                delay_time += 1
+            if cp.touch_A3:
+                delay_time -= 1
+            print("delay time for alarm", delay_time)
+            time.sleep(0.3)
+
+
+
 
