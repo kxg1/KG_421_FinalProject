@@ -69,8 +69,6 @@ print("let's go!")
 
 while True:
     ON = cp.switch
-    if cp.button_a:
-        cc.send(ConsumerControlCode.PLAY_PAUSE)
     if ON:
         cp.red_led = True
         if not ble.connected:
@@ -104,7 +102,7 @@ while True:
             cp.pixels.fill(ALARM_COLOR)
             # ring.show()
             cc.send(ConsumerControlCode.PLAY_PAUSE)
-            for i in range(1,16):
+            for i in range(1,20):
                 cc.send(ConsumerControlCode.VOLUME_INCREMENT)
             time.sleep(0.5)
             ON = False
@@ -112,3 +110,10 @@ while True:
         cp.red_led = False
         cp.pixels.fill((0, 0, 0))
         cc.send(ConsumerControlCode.VOLUME_DECREMENT)
+        Calibrate = cp.button_a
+        time.sleep(0.1)
+        print(Calibrate)
+        if Calibrate:
+            cc.send(ConsumerControlCode.PLAY_PAUSE)
+            Calibrate = False;
+
