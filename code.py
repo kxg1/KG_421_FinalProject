@@ -1,18 +1,16 @@
-"""
-A CircuitPython 'multimedia' dial demo
-Uses a Circuit Playground Bluefruit + Rotary Encoder -> BLE out
-Knob controls volume, push encoder for mute, CPB button A for Play/Pause
-Once paired, bonding will auto re-connect devices
-"""
+# SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
+# SPDX-License-Identifier: MIT
 
+"""This example uses the slide switch to control the little red LED."""
 import time
-import digitalio
-import board
-import rotaryio
-import neopixel
-import adafruit_lis3dh
-import busio
+# import neopixel libraries conflicted with the cp library
+# import board
+# import digitalio
+# import busio
+from adafruit_circuitplayground import cp
 
+# This code is written to be readable versus being Pylint compliant.
+# pylint: disable=simplifiable-if-statement
 
 from adafruit_hid.consumer_control import ConsumerControl
 from adafruit_hid.consumer_control_code import ConsumerControlCode
@@ -21,11 +19,6 @@ import adafruit_ble
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
 from adafruit_ble.services.standard.hid import HIDService
 from adafruit_ble.services.standard.device_info import DeviceInfoService
-
-i2c = busio.I2C(board.ACCELEROMETER_SCL, board.ACCELEROMETER_SDA)
-lis3dh = adafruit_lis3dh.LIS3DH_I2C(i2c, address=0x19)
-lis3dh.range = adafruit_lis3dh.RANGE_8_G
-
 ble = adafruit_ble.BLERadio()
 ble.name = "Bluefruit-Volume-Control"
 # Using default HID Descriptor.
@@ -36,37 +29,22 @@ device_info = DeviceInfoService(
 advertisement = ProvideServicesAdvertisement(hid)
 cc = ConsumerControl(hid.devices)
 
+# Intialize different color specifications
+# for the neopixels depending on the status of the device
 FILL_COLOR = (0, 32, 32)
 UNMUTED_COLOR = (0, 128, 128)
 MUTED_COLOR = (128, 0, 0)
 DISCONNECTED_COLOR = (40, 40, 0)
-<<<<<<< HEAD
 ALARM_COLOR = (128, 0, 0)
 MOVE_THRESHOLD = 50
-=======
->>>>>>> 5bbe8fa52f866ad665168fcd846bdc561181f725
 
-# NeoPixel LED ring
-# Ring code will auto-adjust if not 16 so change to any value!
-ring = neopixel.NeoPixel(board.NEOPIXEL, 10, brightness=0.05, auto_write=False)
-ring.fill(DISCONNECTED_COLOR)
-ring.show()
-dot_location = 0  # what dot is currently lit
+# set neopixels to state before bluetooth is connected
+# ring = neopixel.NeoPixel(board.NEOPIXEL, 10, brightness=0.05, auto_write=False)
+# ring.fill(DISCONNECTED_COLOR)
+# ring.show()
+cp.pixels.brightness = 0.05
+cp.pixels.fill(DISCONNECTED_COLOR)
 
-# CPB button for Play/Pause
-button_A = digitalio.DigitalInOut(board.BUTTON_A)
-button_A.switch_to_input(pull=digitalio.Pull.DOWN)
-
-button_a_pressed = False  # for debounce state
-
-# Encoder button is a digital input with pullup on A1
-# so button.value == False means pressed.
-button = digitalio.DigitalInOut(board.A1)
-button.pull = digitalio.Pull.UP
-
-encoder = rotaryio.IncrementalEncoder(board.A2, board.A3)
-
-last_pos = encoder.position
 muted = False
 command = None
 # Disconnect if already connected, so that we pair properly.
@@ -77,97 +55,60 @@ if ble.connected:
 
 def draw():
     if not muted:
-        ring.fill(FILL_COLOR)
-        ring[dot_location] = UNMUTED_COLOR
+        # ring.fill(FILL_COLOR)
+        cp.pixels.fill(FILL_COLOR)
+        # ring[dot_location] = UNMUTED_COLOR
     else:
-        ring.fill(MUTED_COLOR)
-    ring.show()
+        cp.pixels.fill(MUTED_COLOR)
+    # ring.show()
 
 
 advertising = False
 connection_made = False
 print("let's go!")
+
 while True:
-    x, y, z = lis3dh.acceleration
-    print((x, y, z))
-<<<<<<< HEAD
-    L_stored = ((x**2)+(y**2)+(z**2))**0.5
-    print("Stored Magnitude")
-    print((L_stored))
-    time.sleep(0.3)
-    x_new, y_new, z_new = lis3dh.acceleration
-    L_new = ((x_new**2)+(y_new**2)+(z_new**2))**0.5
-    print("New Magnitude")
-    print((L_new))
-=======
-    time.sleep(0.1)
->>>>>>> 5bbe8fa52f866ad665168fcd846bdc561181f725
-    if not ble.connected:
-        ring.fill(DISCONNECTED_COLOR)
-        ring.show()
-        connection_made = False
-        if not advertising:
-            ble.start_advertising(advertisement)
-            advertising = True
-        continue
+    ON = cp.switch
+    if cp.button_a:
+        cc.send(ConsumerControlCode.PLAY_PAUSE)
+    if ON:
+        cp.red_led = True
+        if not ble.connected:
+            cp.pixels.fill(DISCONNECTED_COLOR)
+            # ring.show()
+            connection_made = False
+            if not advertising:
+                ble.start_advertising(advertisement)
+                advertising = True
+            continue
+        else:
+            if connection_made:
+                pass
+            else:
+                cp.pixels.fill(FILL_COLOR)
+                # ring.show()
+                connection_made = True
+        advertising = False
+        x, y, z = cp.acceleration
+        print((x, y, z))
+        L_stored = ((x**2)+(y**2)+(z**2))**0.5
+        print("Stored Magnitude")
+        print((L_stored))
+        time.sleep(0.3)
+        x_new, y_new, z_new = cp.acceleration
+        print((x_new, y_new, z_new))
+        L_new = ((x_new**2)+(y_new**2)+(z_new**2))**0.5
+        print("New Magnitude")
+        print((L_new))
+        if abs(10*L_new - 10*L_stored) > MOVE_THRESHOLD:
+            cp.pixels.fill(ALARM_COLOR)
+            # ring.show()
+            cc.send(ConsumerControlCode.PLAY_PAUSE)
+            for i in range(1,16):
+                cc.send(ConsumerControlCode.VOLUME_INCREMENT)
+            time.sleep(0.5)
+            ON = False
     else:
-        if connection_made:
-            pass
-        else:
-            ring.fill(FILL_COLOR)
-            ring.show()
-            connection_made = True
-
-    advertising = False
-
-    pos = encoder.position
-    delta = pos - last_pos
-    last_pos = pos
-    direction = 0
-
-    if delta > 0:
-        command = ConsumerControlCode.VOLUME_INCREMENT
-        direction = -1
-    elif delta < 0:
-        command = ConsumerControlCode.VOLUME_DECREMENT
-        direction = 1
-
-    if direction:
-        muted = False
-        for _ in range(abs(delta)):
-            cc.send(command)
-            # spin neopixel LED around in the correct direction!
-            dot_location = (dot_location + direction) % len(ring)
-            draw()
-
-    if not button.value:
-        if not muted:
-            print("Muting")
-            cc.send(ConsumerControlCode.MUTE)
-            muted = True
-        else:
-            print("Unmuting")
-            cc.send(ConsumerControlCode.MUTE)
-            muted = False
-        draw()
-        while not button.value:  # debounce
-            time.sleep(0.1)
-
-    if button_A.value and not button_a_pressed:  # button is pushed
-        cc.send(ConsumerControlCode.PLAY_PAUSE)
-        print("Play/Pause")
-        button_a_pressed = True  # state for debouncing
-        time.sleep(0.05)
-
-    if not button_A.value and button_a_pressed:
-        button_a_pressed = False
-        time.sleep(0.05)
-<<<<<<< HEAD
-    if abs(10*L_new - 10*L_stored) > MOVE_THRESHOLD:
-        ring.fill(ALARM_COLOR)
-        ring.show()
-        cc.send(ConsumerControlCode.PLAY_PAUSE)
-        time.sleep(0.5)
-=======
-
->>>>>>> 5bbe8fa52f866ad665168fcd846bdc561181f725
+        cp.red_led = False
+        cp.pixels.fill((0, 0, 0))
+        cc.send(ConsumerControlCode.VOLUME_DECREMENT)
