@@ -40,8 +40,11 @@ FILL_COLOR = (0, 32, 32)
 UNMUTED_COLOR = (0, 128, 128)
 MUTED_COLOR = (128, 0, 0)
 DISCONNECTED_COLOR = (40, 40, 0)
+<<<<<<< HEAD
 ALARM_COLOR = (128, 0, 0)
 MOVE_THRESHOLD = 50
+=======
+>>>>>>> 5bbe8fa52f866ad665168fcd846bdc561181f725
 
 # NeoPixel LED ring
 # Ring code will auto-adjust if not 16 so change to any value!
@@ -87,6 +90,7 @@ print("let's go!")
 while True:
     x, y, z = lis3dh.acceleration
     print((x, y, z))
+<<<<<<< HEAD
     L_stored = ((x**2)+(y**2)+(z**2))**0.5
     print("Stored Magnitude")
     print((L_stored))
@@ -95,6 +99,9 @@ while True:
     L_new = ((x_new**2)+(y_new**2)+(z_new**2))**0.5
     print("New Magnitude")
     print((L_new))
+=======
+    time.sleep(0.1)
+>>>>>>> 5bbe8fa52f866ad665168fcd846bdc561181f725
     if not ble.connected:
         ring.fill(DISCONNECTED_COLOR)
         ring.show()
@@ -155,8 +162,12 @@ while True:
     if not button_A.value and button_a_pressed:
         button_a_pressed = False
         time.sleep(0.05)
+<<<<<<< HEAD
     if abs(10*L_new - 10*L_stored) > MOVE_THRESHOLD:
         ring.fill(ALARM_COLOR)
         ring.show()
         cc.send(ConsumerControlCode.PLAY_PAUSE)
         time.sleep(0.5)
+=======
+
+>>>>>>> 5bbe8fa52f866ad665168fcd846bdc561181f725
